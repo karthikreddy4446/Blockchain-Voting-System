@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voting System Admin Panel</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@4.0.1/dist/web3.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+        }
+        .header h1 {
+            margin: 0;
+            color: white;
+        }
+        .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .nav-links a:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .stat {
+            font-size: 24px;
+            font-weight: bold;
+            color: #3498db;
+            margin: 10px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-active {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-inactive {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .button-danger {
+            background-color: #e74c3c;
+        }
+        .button-danger:hover {
+            background-color: #c0392b;
+        }
+        .button-success {
+            background-color: #2ecc71;
+        }
+        .button-success:hover {
+            background-color: #27ae60;
+        }
+        .alert {
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .tab-container {
+            margin-top: 20px;
+        }
+        .tab-buttons {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            background-color: #ddd;
+            border: none;
+            border-radius: 4px 4px 0 0;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        .tab-button.active {
+            background-color: #3498db;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .voter-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin: 10px 0;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .voter-address {
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .voter-status {
+            font-weight: bold;
+        }
+        .voted {
+            color: #27ae60;
+        }
+        .not-voted {
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Overlay -->
+    <div id="login-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9); z-index: 1000; display: flex; justify-content: center; align-items: center;">
+        <div style="background-color: white; padding: 30px; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+            <h2 style="color: #2c3e50; margin-top: 0; text-align: center;">Admin Login</h2>
+            <p style="text-align: center; margin-bottom: 20px; color: #7f8c8d;">Enter your password to access the admin panel</p>
+            
+            <div style="margin-bottom: 20px;">
+                <label for="admin-password" style="display: block; margin-bottom: 5px; font-weight: bold;">Password</label>
+                <input type="password" id="admin-password" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px;" placeholder="Enter admin password">
+            </div>
+            
+            <div id="login-error" style="color: #e74c3c; margin-bottom: 15px; display: none; text-align: center; font-weight: bold;"></div>
+            
+            <div style="display: flex; justify-content: space-between;">
+                <button id="login-cancel" style="padding: 10px 15px; background-color: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">Cancel</button>
+                <button id="login-submit" style="padding: 10px 15px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">Login</button>
+            </div>
+            
+            <div style="margin-top: 20px; text-align: center; font-size: 14px; color: #7f8c8d;">
+                <p>Hint: Default password is "admin123"</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="header">
+        <h1>Admin Panel</h1>
+        <div class="nav-links">
+            <a href="/">Results</a>
+            <a href="/analytics.html">Analytics</a>
+            <a href="/simple.html">Vote</a>
+            <a href="#" id="logout-button" style="background-color: #e74c3c; padding: 5px 10px; border-radius: 4px;">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Dashboard</h2>
+        <div class="grid">
+            <div class="card">
+                <h3>Total Candidates</h3>
+                <div class="stat" id="total-candidates">-</div>
+            </div>
+            <div class="card">
+                <h3>Total Votes</h3>
+                <div class="stat" id="total-votes">-</div>
+            </div>
+            <div class="card">
+                <h3>Voter Participation</h3>
+                <div class="stat" id="voter-participation">-</div>
+            </div>
+            <div class="card">
+                <h3>Leading Candidate</h3>
+                <div class="stat" id="leading-candidate">-</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="tab-container">
+            <div class="tab-buttons">
+                <button class="tab-button active" onclick="openTab('candidates')">Candidates</button>
+                <button class="tab-button" onclick="openTab('voters')">Voters</button>
+                <button class="tab-button" onclick="openTab('settings')">Settings</button>
+            </div>
+
+            <div id="candidates" class="tab-content active">
+                <h2>Candidates Management</h2>
+                <p>View and manage candidates in the voting system.</p>
+                
+                <div id="alert-candidates" class="alert"></div>
+                
+                <table id="candidates-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Votes</th>
+                            <th>Percentage</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="candidates-list">
+                        <tr>
+                            <td colspan="4">Loading candidates...</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>Add New Candidate</h3>
+                <p>Note: Adding a new candidate requires redeploying the contract.</p>
+                <div class="form-group">
+                    <label for="new-candidate">Candidate Name</label>
+                    <input type="text" id="new-candidate" placeholder="Enter candidate name">
+                </div>
+                <button onclick="addCandidate()" class="button-success">Add Candidate</button>
+            </div>
+
+            <div id="voters" class="tab-content">
+                <h2>Voters Information</h2>
+                <p>View information about voters and their status.</p>
+                
+                <div id="voters-list">
+                    <p>Loading voters information...</p>
+                </div>
+            </div>
+
+            <div id="settings" class="tab-content">
+                <h2>System Settings</h2>
+                <p>Configure voting system settings.</p>
+                
+                <div id="alert-settings" class="alert"></div>
+                
+                <div class="form-group">
+                    <label for="contract-address">Contract Address</label>
+                    <input type="text" id="contract-address" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label for="admin-account">Admin Account</label>
+                    <input type="text" id="admin-account" readonly>
+                </div>
+                
+                <h3>Voting Status</h3>
+                <div class="form-group">
+                    <label for="voting-status">Current Status</label>
+                    <select id="voting-status">
+                        <option value="open">Open for Voting</option>
+                        <option value="closed">Closed</option>
+                    </select>
+                </div>
+                <button onclick="updateSettings()" class="button-success">Update Settings</button>
+                
+                <h3>Danger Zone</h3>
+                <p>These actions cannot be undone. Please be careful.</p>
+                <button onclick="resetVoting()" class="button-danger">Reset All Votes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Admin authentication
+        const ADMIN_PASSWORD = "admin123"; // In a real app, this would be securely stored on the server
+        let isAuthenticated = false;
+        
+        // DOM elements for login
+        const loginOverlay = document.getElementById('login-overlay');
+        const adminPasswordInput = document.getElementById('admin-password');
+        const loginErrorElement = document.getElementById('login-error');
+        const loginSubmitButton = document.getElementById('login-submit');
+        const loginCancelButton = document.getElementById('login-cancel');
+        
+        // Check if user is already authenticated (using sessionStorage)
+        function checkAuthentication() {
+            const authStatus = sessionStorage.getItem('adminAuthenticated');
+            if (authStatus === 'true') {
+                isAuthenticated = true;
+                hideLoginOverlay();
+            }
+        }
+        
+        // Handle login submission
+        function handleLogin() {
+            const password = adminPasswordInput.value;
+            
+            if (password === ADMIN_PASSWORD) {
+                // Successful login
+                isAuthenticated = true;
+                sessionStorage.setItem('adminAuthenticated', 'true');
+                hideLoginOverlay();
+            } else {
+                // Failed login
+                loginErrorElement.textContent = "Incorrect password. Please try again.";
+                loginErrorElement.style.display = "block";
+                adminPasswordInput.value = "";
+            }
+        }
+        
+        // Hide login overlay and initialize data
+        function hideLoginOverlay() {
+            loginOverlay.style.display = "none";
+            
+            // Initialize blockchain data after successful login
+            initBlockchainData();
+        }
+        
+        // Handle cancel button
+        function handleCancel() {
+            // Redirect to home page
+            window.location.href = "/";
+        }
+        
+        // Handle logout
+        function handleLogout() {
+            // Clear authentication
+            isAuthenticated = false;
+            sessionStorage.removeItem('adminAuthenticated');
+            
+            // Show login overlay
+            loginOverlay.style.display = "flex";
+            adminPasswordInput.value = "";
+            loginErrorElement.style.display = "none";
+        }
+        
+        // Add event listeners for login
+        loginSubmitButton.addEventListener('click', handleLogin);
+        loginCancelButton.addEventListener('click', handleCancel);
+        document.getElementById('logout-button').addEventListener('click', handleLogout);
+        
+        // Allow Enter key to submit login
+        adminPasswordInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                handleLogin();
+            }
+        });
+        
+        // Check authentication status when page loads
+        checkAuthentication();
+        
+        // Contract details
+        const contractAddress = '0x9a1201Eb5839E40B7F0abe32B6b6aAb76926Ca9e';
+        const contractABI = [
+            {
+                "inputs": [{"internalType": "string[]","name": "candidateNames","type": "string[]"}],
+                "stateMutability": "nonpayable",
+                "type": "constructor"
+            },
+            {
+                "inputs": [{"internalType": "uint256","name": "","type": "uint256"}],
+                "name": "candidateList",
+                "outputs": [{"internalType": "string","name": "","type": "string"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "address","name": "","type": "address"}],
+                "name": "voters",
+                "outputs": [{"internalType": "bool","name": "","type": "bool"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "string","name": "","type": "string"}],
+                "name": "votesReceived",
+                "outputs": [{"internalType": "uint256","name": "","type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "string","name": "candidate","type": "string"}],
+                "name": "voteForCandidate",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "string","name": "candidate","type": "string"}],
+                "name": "totalVotesFor",
+                "outputs": [{"internalType": "uint256","name": "","type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "string","name": "candidate","type": "string"}],
+                "name": "isValidCandidate",
+                "outputs": [{"internalType": "bool","name": "","type": "bool"}],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
+        
+        // Global variables
+        let web3;
+        let votingContract;
+        let accounts;
+        let adminAccount;
+        let candidates = [];
+        let totalVotes = 0;
+        
+        // Initialize the application
+        async function init() {
+            // Check authentication first
+            checkAuthentication();
+            
+            // If authenticated, initialize blockchain data
+            if (isAuthenticated) {
+                await initBlockchainData();
+            }
+        }
+        
+        // Initialize blockchain data and load dashboard
+        async function initBlockchainData() {
+            try {
+                // Connect to local Ganache
+                web3 = new Web3('http://localhost:7545');
+                
+                // Initialize contract
+                votingContract = new web3.eth.Contract(contractABI, contractAddress);
+                
+                // Get accounts
+                accounts = await web3.eth.getAccounts();
+                adminAccount = accounts[0];
+                
+                // Set contract address and admin account in settings
+                document.getElementById('contract-address').value = contractAddress;
+                document.getElementById('admin-account').value = adminAccount;
+                
+                // Check current voting status
+                const votingStatus = localStorage.getItem('votingStatus') || 'open';
+                document.getElementById('voting-status').value = votingStatus;
+                
+                // Load data
+                await loadCandidates();
+                await loadVoters();
+                await updateDashboard();
+                
+                console.log("Blockchain data initialized successfully");
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showAlert('candidates', 'Error connecting to blockchain: ' + error.message, 'danger');
+            }
+        }
+        
+        // Get the list of candidates from the contract
+        async function getCandidateList() {
+            try {
+                let index = 0;
+                const candidatesList = [];
+                
+                // Keep trying to get candidates until we get an error
+                while (true) {
+                    try {
+                        const candidate = await votingContract.methods.candidateList(index).call();
+                        candidatesList.push(candidate);
+                        index++;
+                    } catch (error) {
+                        // We've reached the end of the list
+                        break;
+                    }
+                }
+                
+                return candidatesList;
+            } catch (error) {
+                console.error('Error getting candidate list:', error);
+                throw error;
+            }
+        }
+        
+        // Get total votes for a candidate
+        async function getTotalVotesFor(candidate) {
+            try {
+                const votes = await votingContract.methods.totalVotesFor(candidate).call();
+                return parseInt(votes);
+            } catch (error) {
+                console.error(`Error getting votes for ${candidate}:`, error);
+                return 0;
+            }
+        }
+        
+        // Load candidates and their vote counts
+        async function loadCandidates() {
+            try {
+                // Get candidates
+                candidates = await getCandidateList();
+                
+                if (candidates.length === 0) {
+                    document.getElementById('candidates-list').innerHTML = '<tr><td colspan="4">No candidates found.</td></tr>';
+                    return;
+                }
+                
+                // Get votes for each candidate
+                totalVotes = 0;
+                const candidatesWithVotes = [];
+                
+                for (const candidate of candidates) {
+                    const votes = await getTotalVotesFor(candidate);
+                    totalVotes += votes;
+                    candidatesWithVotes.push({ name: candidate, votes });
+                }
+                
+                // Sort candidates by votes (descending)
+                candidatesWithVotes.sort((a, b) => b.votes - a.votes);
+                
+                // Generate HTML for candidates table
+                let candidatesHTML = '';
+                
+                for (const candidate of candidatesWithVotes) {
+                    const percentage = totalVotes > 0 ? ((candidate.votes / totalVotes) * 100).toFixed(2) : '0.00';
+                    const status = candidate.votes > 0 ? 'Active' : 'No votes';
+                    const statusClass = candidate.votes > 0 ? 'status-active' : 'status-inactive';
+                    
+                    candidatesHTML += `
+                        <tr>
+                            <td>${candidate.name}</td>
+                            <td>${candidate.votes}</td>
+                            <td>${percentage}%</td>
+                            <td><span class="status ${statusClass}">${status}</span></td>
+                        </tr>
+                    `;
+                }
+                
+                document.getElementById('candidates-list').innerHTML = candidatesHTML;
+                
+            } catch (error) {
+                console.error('Error loading candidates:', error);
+                document.getElementById('candidates-list').innerHTML = '<tr><td colspan="4">Error loading candidates.</td></tr>';
+            }
+        }
+        
+        // Load voters information
+        async function loadVoters() {
+            try {
+                const votersListElement = document.getElementById('voters-list');
+                votersListElement.innerHTML = '<p>Loading voters information...</p>';
+                
+                // Get all accounts
+                const allAccounts = await web3.eth.getAccounts();
+                
+                // Check voting status for each account
+                let votersHTML = '';
+                let votedCount = 0;
+                
+                for (const account of allAccounts) {
+                    const hasVoted = await votingContract.methods.voters(account).call();
+                    
+                    if (hasVoted) {
+                        votedCount++;
+                    }
+                    
+                    votersHTML += `
+                        <div class="voter-card">
+                            <div class="voter-address">${account}</div>
+                            <div class="voter-status ${hasVoted ? 'voted' : 'not-voted'}">
+                                ${hasVoted ? 'Has voted' : 'Has not voted'}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // Update voter participation
+                const participation = allAccounts.length > 0 ? ((votedCount / allAccounts.length) * 100).toFixed(2) : '0.00';
+                document.getElementById('voter-participation').textContent = `${participation}%`;
+                
+                votersListElement.innerHTML = votersHTML;
+                
+            } catch (error) {
+                console.error('Error loading voters:', error);
+                document.getElementById('voters-list').innerHTML = '<p>Error loading voters information.</p>';
+            }
+        }
+        
+        // Update dashboard statistics
+        async function updateDashboard() {
+            try {
+                // Total candidates
+                document.getElementById('total-candidates').textContent = candidates.length;
+                
+                // Total votes
+                document.getElementById('total-votes').textContent = totalVotes;
+                
+                // Leading candidate
+                if (candidates.length > 0) {
+                    let leadingCandidate = '';
+                    let maxVotes = -1;
+                    
+                    for (const candidate of candidates) {
+                        const votes = await getTotalVotesFor(candidate);
+                        if (votes > maxVotes) {
+                            maxVotes = votes;
+                            leadingCandidate = candidate;
+                        }
+                    }
+                    
+                    document.getElementById('leading-candidate').textContent = leadingCandidate;
+                } else {
+                    document.getElementById('leading-candidate').textContent = 'None';
+                }
+                
+            } catch (error) {
+                console.error('Error updating dashboard:', error);
+            }
+        }
+        
+        // Add a new candidate (note: this would require contract redeployment)
+        function addCandidate() {
+            const candidateName = document.getElementById('new-candidate').value.trim();
+            
+            if (!candidateName) {
+                showAlert('candidates', 'Please enter a candidate name.', 'danger');
+                return;
+            }
+            
+            // In a real implementation, this would trigger a contract redeployment
+            // For this demo, we'll just show a message
+            showAlert('candidates', 'Adding a new candidate requires redeploying the contract. This feature is simulated in this demo.', 'success');
+            document.getElementById('new-candidate').value = '';
+        }
+        
+        // Update system settings
+        function updateSettings() {
+            const votingStatus = document.getElementById('voting-status').value;
+            
+            // Store voting status in localStorage
+            localStorage.setItem('votingStatus', votingStatus);
+            
+            // Show success message
+            showAlert('settings', `Voting status updated to: ${votingStatus === 'open' ? 'Open for Voting' : 'Closed'}`, 'success');
+            
+            // If voting is closed, show additional message
+            if (votingStatus === 'closed') {
+                showAlert('settings', 'Voting is now closed. The winner will be displayed on the results page.', 'success');
+            }
+        }
+        
+        // Reset all votes (note: this would require contract redeployment)
+        function resetVoting() {
+            if (confirm('Are you sure you want to reset all votes? This action cannot be undone.')) {
+                // In a real implementation, this would trigger a contract redeployment
+                // For this demo, we'll just show a message
+                showAlert('settings', 'Resetting votes requires redeploying the contract. This feature is simulated in this demo.', 'success');
+            }
+        }
+        
+        // Show alert message
+        function showAlert(tabId, message, type) {
+            const alertElement = document.getElementById(`alert-${tabId}`);
+            alertElement.textContent = message;
+            alertElement.className = `alert alert-${type}`;
+            alertElement.style.display = 'block';
+            
+            // Hide alert after 5 seconds
+            setTimeout(() => {
+                alertElement.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Tab navigation
+        function openTab(tabName) {
+            // Hide all tab contents
+            const tabContents = document.getElementsByClassName('tab-content');
+            for (let i = 0; i < tabContents.length; i++) {
+                tabContents[i].classList.remove('active');
+            }
+            
+            // Remove active class from all tab buttons
+            const tabButtons = document.getElementsByClassName('tab-button');
+            for (let i = 0; i < tabButtons.length; i++) {
+                tabButtons[i].classList.remove('active');
+            }
+            
+            // Show the selected tab content and mark its button as active
+            document.getElementById(tabName).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+        
+        // Initialize the application when the page loads
+        window.onload = init;
+    </script>
+</body>
+</html>

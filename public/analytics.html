@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voting Analytics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@4.0.1/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+        }
+        .header h1 {
+            margin: 0;
+            color: white;
+        }
+        .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .nav-links a:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .stat {
+            font-size: 24px;
+            font-weight: bold;
+            color: #3498db;
+            margin: 10px 0;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+        }
+        .chart-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .chart-card {
+            flex: 1;
+            min-width: 300px;
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .refresh-button {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .refresh-button:hover {
+            background-color: #27ae60;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .data-table th, .data-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .data-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .data-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        .progress-bar {
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        .progress {
+            height: 100%;
+            background-color: #3498db;
+            border-radius: 4px;
+            transition: width 0.5s;
+        }
+        .key-metric {
+            text-align: center;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .key-metric .value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #3498db;
+            margin: 10px 0;
+        }
+        .key-metric .label {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Analytics Dashboard</h1>
+        <div class="nav-links">
+            <a href="/">Results</a>
+            <a href="/admin.html">Admin</a>
+            <a href="/simple.html">Vote</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="grid">
+            <div class="key-metric">
+                <div class="label">Total Votes</div>
+                <div class="value" id="total-votes">-</div>
+            </div>
+            <div class="key-metric">
+                <div class="label">Voter Participation</div>
+                <div class="value" id="voter-participation">-</div>
+            </div>
+            <div class="key-metric">
+                <div class="label">Leading Candidate</div>
+                <div class="value" id="leading-candidate">-</div>
+                <div class="label" id="leading-percentage">-</div>
+            </div>
+            <div class="key-metric">
+                <div class="label">Vote Margin</div>
+                <div class="value" id="vote-margin">-</div>
+                <div class="label">votes difference</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="chart-row">
+        <div class="chart-card">
+            <h3>Vote Distribution</h3>
+            <div class="chart-container">
+                <canvas id="vote-distribution-chart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3>Voter Participation</h3>
+            <div class="chart-container">
+                <canvas id="voter-participation-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Detailed Vote Analysis</h2>
+        <button class="refresh-button" id="refresh-data">Refresh Data</button>
+        
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Candidate</th>
+                    <th>Votes</th>
+                    <th>Percentage</th>
+                    <th>Progress</th>
+                </tr>
+            </thead>
+            <tbody id="vote-analysis">
+                <tr>
+                    <td colspan="4">Loading data...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <footer>
+        <p>Blockchain Voting System - Analytics Dashboard</p>
+    </footer>
+
+    <script>
+        // Contract details
+        const contractAddress = '0x9a1201Eb5839E40B7F0abe32B6b6aAb76926Ca9e';
+        const contractABI = [
+            {
+                "inputs": [{"internalType": "string[]","name": "candidateNames","type": "string[]"}],
+                "stateMutability": "nonpayable",
+                "type": "constructor"
+            },
+            {
+                "inputs": [{"internalType": "uint256","name": "","type": "uint256"}],
+                "name": "candidateList",
+                "outputs": [{"internalType": "string","name": "","type": "string"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "address","name": "","type": "address"}],
+                "name": "voters",
+                "outputs": [{"internalType": "bool","name": "","type": "bool"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "string","name": "","type": "string"}],
+                "name": "votesReceived",
+                "outputs": [{"internalType": "uint256","name": "","type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "string","name": "candidate","type": "string"}],
+                "name": "voteForCandidate",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "string","name": "candidate","type": "string"}],
+                "name": "totalVotesFor",
+                "outputs": [{"internalType": "uint256","name": "","type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "string","name": "candidate","type": "string"}],
+                "name": "isValidCandidate",
+                "outputs": [{"internalType": "bool","name": "","type": "bool"}],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
+        
+        // Global variables
+        let web3;
+        let votingContract;
+        let accounts;
+        let candidates = [];
+        let totalVotes = 0;
+        let voteDistributionChart;
+        let voterParticipationChart;
+        
+        // Initialize the application
+        async function init() {
+            try {
+                // Connect to local Ganache
+                web3 = new Web3('http://localhost:7545');
+                
+                // Initialize contract
+                votingContract = new web3.eth.Contract(contractABI, contractAddress);
+                
+                // Get accounts
+                accounts = await web3.eth.getAccounts();
+                
+                // Load data
+                await loadData();
+                
+                // Add event listener for refresh button
+                document.getElementById('refresh-data').addEventListener('click', loadData);
+                
+            } catch (error) {
+                console.error('Initialization error:', error);
+            }
+        }
+        
+        // Get the list of candidates from the contract
+        async function getCandidateList() {
+            try {
+                let index = 0;
+                const candidatesList = [];
+                
+                // Keep trying to get candidates until we get an error
+                while (true) {
+                    try {
+                        const candidate = await votingContract.methods.candidateList(index).call();
+                        candidatesList.push(candidate);
+                        index++;
+                    } catch (error) {
+                        // We've reached the end of the list
+                        break;
+                    }
+                }
+                
+                return candidatesList;
+            } catch (error) {
+                console.error('Error getting candidate list:', error);
+                throw error;
+            }
+        }
+        
+        // Get total votes for a candidate
+        async function getTotalVotesFor(candidate) {
+            try {
+                const votes = await votingContract.methods.totalVotesFor(candidate).call();
+                return parseInt(votes);
+            } catch (error) {
+                console.error(`Error getting votes for ${candidate}:`, error);
+                return 0;
+            }
+        }
+        
+        // Load all data for the analytics dashboard
+        async function loadData() {
+            try {
+                // Get candidates
+                candidates = await getCandidateList();
+                
+                if (candidates.length === 0) {
+                    console.error('No candidates found');
+                    return;
+                }
+                
+                // Get votes for each candidate
+                totalVotes = 0;
+                const candidatesWithVotes = [];
+                
+                for (const candidate of candidates) {
+                    const votes = await getTotalVotesFor(candidate);
+                    totalVotes += votes;
+                    candidatesWithVotes.push({ name: candidate, votes });
+                }
+                
+                // Sort candidates by votes (descending)
+                candidatesWithVotes.sort((a, b) => b.votes - a.votes);
+                
+                // Update key metrics
+                document.getElementById('total-votes').textContent = totalVotes;
+                
+                // Calculate voter participation
+                let votedCount = 0;
+                for (const account of accounts) {
+                    const hasVoted = await votingContract.methods.voters(account).call();
+                    if (hasVoted) {
+                        votedCount++;
+                    }
+                }
+                
+                const participation = accounts.length > 0 ? ((votedCount / accounts.length) * 100).toFixed(2) : '0.00';
+                document.getElementById('voter-participation').textContent = `${participation}%`;
+                
+                // Update leading candidate
+                if (candidatesWithVotes.length > 0) {
+                    const leader = candidatesWithVotes[0];
+                    const leaderPercentage = totalVotes > 0 ? ((leader.votes / totalVotes) * 100).toFixed(2) : '0.00';
+                    
+                    document.getElementById('leading-candidate').textContent = leader.name;
+                    document.getElementById('leading-percentage').textContent = `${leaderPercentage}% of votes`;
+                    
+                    // Calculate vote margin (difference between 1st and 2nd place)
+                    if (candidatesWithVotes.length > 1) {
+                        const margin = leader.votes - candidatesWithVotes[1].votes;
+                        document.getElementById('vote-margin').textContent = margin;
+                    } else {
+                        document.getElementById('vote-margin').textContent = leader.votes;
+                    }
+                } else {
+                    document.getElementById('leading-candidate').textContent = 'None';
+                    document.getElementById('leading-percentage').textContent = '0% of votes';
+                    document.getElementById('vote-margin').textContent = '0';
+                }
+                
+                // Update detailed vote analysis table
+                let analysisHTML = '';
+                
+                for (const candidate of candidatesWithVotes) {
+                    const percentage = totalVotes > 0 ? ((candidate.votes / totalVotes) * 100).toFixed(2) : '0.00';
+                    
+                    analysisHTML += `
+                        <tr>
+                            <td>${candidate.name}</td>
+                            <td>${candidate.votes}</td>
+                            <td>${percentage}%</td>
+                            <td>
+                                <div class="progress-bar">
+                                    <div class="progress" style="width: ${percentage}%"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+                
+                document.getElementById('vote-analysis').innerHTML = analysisHTML;
+                
+                // Update charts
+                updateVoteDistributionChart(candidatesWithVotes);
+                updateVoterParticipationChart(votedCount, accounts.length - votedCount);
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+        
+        // Update vote distribution chart
+        function updateVoteDistributionChart(candidatesWithVotes) {
+            const ctx = document.getElementById('vote-distribution-chart').getContext('2d');
+            
+            // Prepare data for chart
+            const labels = candidatesWithVotes.map(c => c.name);
+            const data = candidatesWithVotes.map(c => c.votes);
+            
+            // Generate random colors for each candidate
+            const backgroundColors = generateColors(candidatesWithVotes.length);
+            
+            // Destroy previous chart if it exists
+            if (voteDistributionChart) {
+                voteDistributionChart.destroy();
+            }
+            
+            // Create new chart
+            voteDistributionChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : '0.00';
+                                    return `${label}: ${value} votes (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Update voter participation chart
+        function updateVoterParticipationChart(voted, notVoted) {
+            const ctx = document.getElementById('voter-participation-chart').getContext('2d');
+            
+            // Destroy previous chart if it exists
+            if (voterParticipationChart) {
+                voterParticipationChart.destroy();
+            }
+            
+            // Create new chart
+            voterParticipationChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Voted', 'Not Voted'],
+                    datasets: [{
+                        data: [voted, notVoted],
+                        backgroundColor: ['#2ecc71', '#e74c3c'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : '0.00';
+                                    return `${label}: ${value} accounts (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Generate random colors for chart
+        function generateColors(count) {
+            const colors = [
+                '#3498db', '#2ecc71', '#e74c3c', '#f39c12', '#9b59b6',
+                '#1abc9c', '#d35400', '#34495e', '#16a085', '#c0392b',
+                '#2980b9', '#27ae60', '#e67e22', '#8e44ad', '#f1c40f'
+            ];
+            
+            // If we have more candidates than colors, generate random colors
+            if (count > colors.length) {
+                for (let i = colors.length; i < count; i++) {
+                    const r = Math.floor(Math.random() * 255);
+                    const g = Math.floor(Math.random() * 255);
+                    const b = Math.floor(Math.random() * 255);
+                    colors.push(`rgb(${r}, ${g}, ${b})`);
+                }
+            }
+            
+            return colors.slice(0, count);
+        }
+        
+        // Initialize the application when the page loads
+        window.onload = init;
+    </script>
+</body>
+</html>

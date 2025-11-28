@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Voting Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@4.0.1/dist/web3.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background-color: #f5f7fa;
+        }
+        h1, h2 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .candidate-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin: 10px 0;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .candidate-name {
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .vote-count {
+            font-size: 20px;
+            font-weight: bold;
+            color: #3498db;
+        }
+        .vote-button {
+            display: block;
+            width: 200px;
+            margin: 20px auto;
+            padding: 12px 20px;
+            background-color: #3498db;
+            color: white;
+            text-align: center;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .vote-button:hover {
+            background-color: #2980b9;
+        }
+        .status-bar {
+            background-color: #e8f4fd;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #2c3e50;
+        }
+        .refresh-button {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .refresh-button:hover {
+            background-color: #27ae60;
+        }
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Blockchain Voting System</h1>
+        <p class="status-bar" id="connection-status">Connecting to blockchain...</p>
+        
+        <!-- Winner announcement banner (hidden by default) -->
+        <div id="winner-banner" style="display: none; background-color: #2ecc71; color: white; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: center; font-size: 18px; font-weight: bold;">
+            Voting is closed! The winner is: <span id="winner-name"></span>
+        </div>
+        
+        <div style="text-align: center; margin-top: 10px;">
+            <a href="/simple.html" style="margin: 0 10px; color: #3498db; text-decoration: none;">Vote</a>
+            <a href="/analytics.html" style="margin: 0 10px; color: #3498db; text-decoration: none;">Analytics</a>
+            <a href="/admin.html" style="margin: 0 10px; color: #3498db; text-decoration: none;">Admin</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Current Results</h2>
+        <div id="results">Loading results...</div>
+        <button class="refresh-button" id="refresh-results">Refresh Results</button>
+    </div>
+
+    <a href="/simple.html" class="vote-button">VOTE NOW</a>
+
+    <footer>
+        <p>Blockchain Voting System - Powered by Ethereum</p>
+    </footer>
+
+    <script>
+        // Contract details
+        const contractAddress = '0x9a1201Eb5839E40B7F0abe32B6b6aAb76926Ca9e';
+        const contractABI = [
+            {
+                "inputs": [{"internalType": "string[]","name": "candidateNames","type": "string[]"}],
+                "stateMutability": "nonpayable",
+                "type": "constructor"
+            },
+            {
+                "inputs": [{"internalType": "uint256","name": "","type": "uint256"}],
+                "name": "candidateList",
+                "outputs": [{"internalType": "string","name": "","type": "string"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "address","name": "","type": "address"}],
+                "name": "voters",
+                "outputs": [{"internalType": "bool","name": "","type": "bool"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "string","name": "","type": "string"}],
+                "name": "votesReceived",
+                "outputs": [{"internalType": "uint256","name": "","type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "string","name": "candidate","type": "string"}],
+                "name": "voteForCandidate",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "string","name": "candidate","type": "string"}],
+                "name": "totalVotesFor",
+                "outputs": [{"internalType": "uint256","name": "","type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "string","name": "candidate","type": "string"}],
+                "name": "isValidCandidate",
+                "outputs": [{"internalType": "bool","name": "","type": "bool"}],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
+        
+        // Global variables
+        let web3;
+        let votingContract;
+        let candidates = [];
+        
+        // DOM elements
+        const statusElement = document.getElementById('connection-status');
+        const resultsElement = document.getElementById('results');
+        const refreshButton = document.getElementById('refresh-results');
+        
+        // Initialize the application
+        async function init() {
+            try {
+                // Connect to local Ganache
+                web3 = new Web3('http://localhost:7545');
+                
+                // Initialize contract
+                votingContract = new web3.eth.Contract(contractABI, contractAddress);
+                
+                // Get accounts
+                const accounts = await web3.eth.getAccounts();
+                
+                statusElement.textContent = 'Connected to Ethereum blockchain';
+                
+                // Check if voting is closed
+                await checkVotingStatus();
+                
+                // Load results
+                await loadResults();
+                
+                // Add event listener for refresh button
+                refreshButton.addEventListener('click', async () => {
+                    await checkVotingStatus();
+                    await loadResults();
+                });
+                
+            } catch (error) {
+                console.error('Initialization error:', error);
+                statusElement.textContent = 'Error connecting to blockchain: ' + error.message;
+                statusElement.style.color = 'red';
+            }
+        }
+        
+        // Check if voting is closed and show winner if it is
+        async function checkVotingStatus() {
+            try {
+                // For this demo, we'll use localStorage to simulate voting status
+                // In a real app, this would be a contract state variable
+                const votingStatus = localStorage.getItem('votingStatus');
+                
+                if (votingStatus === 'closed') {
+                    // Get the winner
+                    const candidatesWithVotes = [];
+                    
+                    // Get candidates
+                    candidates = await getCandidateList();
+                    
+                    // Get votes for each candidate
+                    for (const candidate of candidates) {
+                        const votes = await getTotalVotesFor(candidate);
+                        candidatesWithVotes.push({ name: candidate, votes: parseInt(votes) });
+                    }
+                    
+                    // Sort by votes (descending)
+                    candidatesWithVotes.sort((a, b) => b.votes - a.votes);
+                    
+                    // Get the winner (candidate with most votes)
+                    if (candidatesWithVotes.length > 0) {
+                        const winner = candidatesWithVotes[0];
+                        
+                        // Show winner banner
+                        document.getElementById('winner-name').textContent = winner.name;
+                        document.getElementById('winner-banner').style.display = 'block';
+                        
+                        // Disable vote button
+                        const voteButton = document.querySelector('.vote-button');
+                        if (voteButton) {
+                            voteButton.style.backgroundColor = '#95a5a6';
+                            voteButton.style.cursor = 'not-allowed';
+                            voteButton.textContent = 'VOTING CLOSED';
+                            voteButton.href = '#';
+                            voteButton.onclick = (e) => {
+                                e.preventDefault();
+                                alert('Voting is closed. The winner has been announced.');
+                            };
+                        }
+                    }
+                } else {
+                    // Hide winner banner if voting is open
+                    document.getElementById('winner-banner').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error checking voting status:', error);
+            }
+        }
+        
+        // Get the list of candidates from the contract
+        async function getCandidateList() {
+            try {
+                let index = 0;
+                const candidatesList = [];
+                
+                // Keep trying to get candidates until we get an error
+                while (true) {
+                    try {
+                        const candidate = await votingContract.methods.candidateList(index).call();
+                        candidatesList.push(candidate);
+                        index++;
+                    } catch (error) {
+                        // We've reached the end of the list
+                        break;
+                    }
+                }
+                
+                return candidatesList;
+            } catch (error) {
+                console.error('Error getting candidate list:', error);
+                throw error;
+            }
+        }
+        
+        // Get total votes for a candidate
+        async function getTotalVotesFor(candidate) {
+            try {
+                const votes = await votingContract.methods.totalVotesFor(candidate).call();
+                return votes;
+            } catch (error) {
+                console.error(`Error getting votes for ${candidate}:`, error);
+                return 0;
+            }
+        }
+        
+        // Load voting results
+        async function loadResults() {
+            try {
+                resultsElement.innerHTML = '<p>Loading results...</p>';
+                
+                // Get candidates
+                candidates = await getCandidateList();
+                
+                if (candidates.length === 0) {
+                    resultsElement.innerHTML = '<p>No candidates found.</p>';
+                    return;
+                }
+                
+                // Get votes for each candidate
+                let resultsHTML = '';
+                
+                // Create an array to hold candidates with their votes
+                const candidatesWithVotes = [];
+                
+                for (const candidate of candidates) {
+                    const votes = await getTotalVotesFor(candidate);
+                    candidatesWithVotes.push({ name: candidate, votes: parseInt(votes) });
+                }
+                
+                // Sort candidates by votes (descending)
+                candidatesWithVotes.sort((a, b) => b.votes - a.votes);
+                
+                // Generate HTML for each candidate
+                for (const candidate of candidatesWithVotes) {
+                    resultsHTML += `
+                        <div class="candidate-card">
+                            <div class="candidate-name">${candidate.name}</div>
+                            <div class="vote-count">${candidate.votes} votes</div>
+                        </div>
+                    `;
+                }
+                
+                resultsElement.innerHTML = resultsHTML;
+                
+            } catch (error) {
+                console.error('Error loading results:', error);
+                resultsElement.innerHTML = '<p>Error loading results. Please try again.</p>';
+            }
+        }
+        
+        // Initialize the application when the page loads
+        window.onload = init;
+    </script>
+</body>
+</html>
