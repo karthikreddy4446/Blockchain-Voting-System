@@ -1,0 +1,50 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/web3@4.0.1/dist/web3.min.js"></script>
+    <title>Blockchain Voting System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Blockchain Voting System</h1>
+            <p>Vote for your favorite candidate using Ethereum blockchain technology</p>
+        </header>
+
+        <div class="status-container">
+            <div id="connection-status">Connecting to blockchain...</div>
+            <div id="account-info">Account: Not connected</div>
+        </div>
+
+        <div class="main-content">
+            <div class="candidates-container">
+                <h2>Candidates</h2>
+                <div id="candidates-list">
+                    Loading candidates...
+                </div>
+            </div>
+
+            <div class="results-container">
+                <h2>Current Results</h2>
+                <div id="results">
+                    Loading results...
+                </div>
+            </div>
+        </div>
+
+        <div class="message-container">
+            <div id="message"></div>
+        </div>
+
+        <footer>
+            <p>Blockchain Voting System - Powered by Ethereum</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
